@@ -17,6 +17,7 @@ const LocationMap = ({ onLocationSelect, initialLocation, label }: LocationMapPr
   const marker = useRef<mapboxgl.Marker | null>(null);
   const [mapboxToken, setMapboxToken] = useState<string>("");
   const [isTokenSet, setIsTokenSet] = useState(false);
+  const [tokenError, setTokenError] = useState<string>("");
 
   useEffect(() => {
     if (!mapContainer.current || !isTokenSet) return;
@@ -28,6 +29,12 @@ const LocationMap = ({ onLocationSelect, initialLocation, label }: LocationMapPr
       style: "mapbox://styles/mapbox/streets-v12",
       center: initialLocation ? [initialLocation.lng, initialLocation.lat] : [121.0244, 14.5547], // Manila
       zoom: 13,
+    });
+
+    map.current.on('error', (e) => {
+      console.error('Mapbox error:', e);
+      setTokenError("Invalid Mapbox token. Please check your token and try again.");
+      setIsTokenSet(false);
     });
 
     map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
@@ -61,27 +68,41 @@ const LocationMap = ({ onLocationSelect, initialLocation, label }: LocationMapPr
         <p className="text-sm text-muted-foreground mb-2">
           Get your free token at{" "}
           <a
-            href="https://mapbox.com"
+            href="https://account.mapbox.com/access-tokens/"
             target="_blank"
             rel="noopener noreferrer"
             className="text-primary hover:underline"
           >
-            mapbox.com
+            mapbox.com/access-tokens
           </a>
+          {" "}(tokens start with "pk.")
         </p>
+        {tokenError && (
+          <p className="text-sm text-destructive mb-2">{tokenError}</p>
+        )}
         <div className="flex gap-2">
           <Input
             id="mapbox-token"
             type="text"
-            placeholder="pk.eyJ1..."
+            placeholder="pk.eyJ1IjoiZXhhbXBsZSIsImEiOiJja..."
             value={mapboxToken}
-            onChange={(e) => setMapboxToken(e.target.value)}
+            onChange={(e) => {
+              setMapboxToken(e.target.value);
+              setTokenError("");
+            }}
           />
           <button
             onClick={() => {
-              if (mapboxToken.trim()) {
-                setIsTokenSet(true);
+              const token = mapboxToken.trim();
+              if (!token) return;
+              
+              if (!token.startsWith('pk.')) {
+                setTokenError("Invalid token format. Mapbox tokens must start with 'pk.'");
+                return;
               }
+              
+              setTokenError("");
+              setIsTokenSet(true);
             }}
             disabled={!mapboxToken.trim()}
             className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
